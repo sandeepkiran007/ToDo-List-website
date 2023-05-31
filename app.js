@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
-
+const _ = require("lodash")
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
 app.use(express.static("public"))
@@ -37,8 +37,19 @@ const List = mongoose.model("List", listSchema);
 // reading.save().then(function(err) {
 //     console.log("Element added successfully", err);
 // })
+
+var today = new Date();
+
+var options = {
+    weekday: "long",
+    day: "numeric",
+    month: "long"
+    }
+var day = today.toLocaleDateString("en-US", options);
+
+
 app.get("/:para", function(req, res) {
-    const webName = req.params.para;
+    const webName = _.capitalize(req.params.para);
     List.findOne({name: webName}).then(function(Listfound) {
         if(!Listfound) {
             const list = new List({
@@ -60,15 +71,7 @@ app.post("/", function(req, res) {
     const item = new Item({
         name: itemName
     })
-    var todays = new Date();
-
-    var optionss = {
-        weekday: "long",
-        day: "numeric",
-        month: "long"
-        }
-    var days = todays.toLocaleDateString("en-US", optionss);
-    if (days==itemName) {
+    if (day==itemName) {
         item.save()
         res.redirect("/");
     } else {
@@ -81,21 +84,23 @@ app.post("/", function(req, res) {
 })
 app.post("/delete", function(req, res) {
     const id = req.body.checkbox;
-    Item.deleteOne({_id: id}).then(function() {
-        console.log("Item Deleted Successfully");
-    })
-    res.redirect("/");
+    const ListName = req.body.ListName;
+    if(ListName==day) {
+        Item.deleteOne({_id: id}).then(function() {
+            console.log("Item Deleted from main page Successfully");
+        })
+        res.redirect("/");
+    } else {
+        List.findOneAndUpdate({name: ListName}, {$pull: {items: {_id: id}}}).then(function() {
+            console.log("Item Deleted in sub page successfully");
+            res.redirect("/"+ListName);
+        })
+    }
+    
 })
 app.get("/" , function(req, res) {
     
-    var today = new Date();
 
-    var options = {
-        weekday: "long",
-        day: "numeric",
-        month: "long"
-        }
-    var day = today.toLocaleDateString("en-US", options);
 
     Item.find().then(function(item) {
         if(item.length === 0) {
